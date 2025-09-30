@@ -1,8 +1,7 @@
-"""
+﻿"""
 Production-ready Django settings with python-decouple.
 Toggle DEBUG to switch between dev/prod.
 """
-
 from datetime import timedelta
 from pathlib import Path
 
@@ -72,23 +71,12 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Password validation
-AUTH_PASSWORD_VALIDATORS = (
-    [
-        {
-            "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
-        },
-        {
-            "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-            "OPTIONS": {"min_length": 12},
-        },
-        {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-        {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-        {"NAME": "apps.accounts.validators.UppercaseValidator"},
-        {"NAME": "apps.accounts.validators.SpecialCharacterValidator"},
-    ]
-    if not DEBUG
-    else []
-)
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+] if not DEBUG else []
 
 # Templates
 TEMPLATES = [
@@ -108,44 +96,36 @@ TEMPLATES = [
 ]
 
 # Database
-DATABASES = (
-    {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": config("DB_NAME", default="valund"),
-            "USER": config("DB_USER", default="postgres"),
-            "PASSWORD": config("DB_PASSWORD", default=""),
-            "HOST": config("DB_HOST", default="localhost"),
-            "PORT": config("DB_PORT", default="5432"),
-            "CONN_MAX_AGE": 600,
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("DB_NAME", default="valund"),
+        "USER": config("DB_USER", default="postgres"),
+        "PASSWORD": config("DB_PASSWORD", default=""),
+        "HOST": config("DB_HOST", default="localhost"),
+        "PORT": config("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": 600,
     }
-    if not DEBUG
-    else {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
+} if not DEBUG else {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
-)
+}
 
 # Redis & Cache
 REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/0")
-CACHES = (
-    {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": REDIS_URL,
-            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-        }
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     }
-    if not DEBUG
-    else {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        }
+} if not DEBUG else {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     }
-)
+}
 
 # Celery
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL.replace("/0", "/1"))
@@ -187,7 +167,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost:5173,http://127.0.0.1:5173",
-    cast=Csv(),
+    cast=Csv()
 )
 
 # CSRF
@@ -224,11 +204,7 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Email
-EMAIL_BACKEND = (
-    "django.core.mail.backends.console.EmailBackend"
-    if DEBUG
-    else "django.core.mail.backends.smtp.EmailBackend"
-)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend"
 if not DEBUG:
     EMAIL_HOST = config("EMAIL_HOST")
     EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
@@ -240,5 +216,4 @@ if not DEBUG:
 SENTRY_DSN = config("SENTRY_DSN", default="")
 if SENTRY_DSN and not DEBUG:
     import sentry_sdk
-
     sentry_sdk.init(dsn=SENTRY_DSN, traces_sample_rate=0.1)
