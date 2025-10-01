@@ -1,10 +1,10 @@
 ﻿import { Layout } from "@/app/layouts/Layout";
 import { Home } from "@/app/pages/Home";
-import "@/assets/styles/index.css";
 import { LoginPage } from "@/features/accounts/pages/LoginPage";
 import { RegisterPage } from "@/features/accounts/pages/RegisterPage";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { NotFoundPage } from "@/shared/components/NotFoundPage";
+import "@/styles/index.css";
 import {
   createRootRoute,
   createRoute,
