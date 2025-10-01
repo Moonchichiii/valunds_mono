@@ -63,6 +63,10 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
+
+RATELIMIT_ENABLE = not DEBUG  # Enforce in production
+RATELIMIT_USE_CACHE = "default"
+
 # Auth
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = [
