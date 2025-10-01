@@ -12,8 +12,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
-ROOT_URLCONF = "config.urls"
-WSGI_APPLICATION = "config.wsgi.application"
+ROOT_URLCONF = "backend.config.urls"
+WSGI_APPLICATION = "backend.config.wsgi.application"
 SITE_ID = 1
 
 # Apps
@@ -38,14 +38,14 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "django_prometheus",
     # Local apps
-    "apps.accounts",
-    "apps.competence",
-    "apps.bookings",
-    "apps.contracts",
-    "apps.identity",
-    "apps.payments",
-    "apps.ratings",
-    "apps.search",
+    "backend.apps.accounts",
+    "backend.apps.competence",
+    "backend.apps.bookings",
+    "backend.apps.contracts",
+    "backend.apps.identity",
+    "backend.apps.payments",
+    "backend.apps.ratings",
+    "backend.apps.search",
 ]
 
 # Middleware

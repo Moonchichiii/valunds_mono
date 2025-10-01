@@ -80,10 +80,7 @@ const Dashboard: React.FC = () => {
 
   // Helper functions
   const getDisplayName = useCallback((user: AuthUser): string => {
-    if (user.full_name?.trim()) {
-      return user.full_name;
-    }
-
+    // Removed full_name check - doesn't exist in User type
     const firstName = user.first_name?.trim() ?? "";
     const lastName = user.last_name?.trim() ?? "";
     const nameFromParts = `${firstName} ${lastName}`.trim();

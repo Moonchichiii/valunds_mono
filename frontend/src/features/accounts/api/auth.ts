@@ -134,7 +134,9 @@ const persistUser = (user: User | null): void => {
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  } catch {}
+  } catch {
+    // Silently fail - not critical
+  }
 };
 
 const getPersistedUser = (): User | null => {
@@ -150,6 +152,7 @@ const getPersistedUser = (): User | null => {
 /* Helpers */
 const hasRefreshCookie = (): boolean =>
   document.cookie.includes("refresh_token=");
+
 const shouldQueryMe = (): boolean =>
   Boolean(getAccessToken()) || hasRefreshCookie();
 
