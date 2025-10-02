@@ -34,10 +34,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        # Create inactive user until email is verified
         user = User.objects.create_user(
-            username=validated_data["email"],  # Required by AbstractUser
+            username=validated_data["email"],  # AbstractUser requires it
             **validated_data,
         )
+        user.is_active = False
+        user.save(update_fields=["is_active"])
         return user
 
 

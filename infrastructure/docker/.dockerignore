@@ -1,0 +1,85 @@
+# Modernized .dockerignore for a Python project
+
+# Bytecode & compiled
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual envs & Python runtime files
+.venv/
+venv/
+env/
+.python-version
+.pyenv/
+
+# Packaging / build artifacts
+*.egg
+*.egg-info/
+*.dist-info/
+build/
+dist/
+pip-wheel-metadata/
+*.whl
+*.tar.gz
+
+# Tests & coverage
+tests/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Logs
+*.log
+logs/
+
+# Git, IDE & editor
+.git/
+.gitignore
+.gitattributes
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker / compose
+.dockerignore
+docker-compose*.yml
+Dockerfile.*
+
+# Config & secrets
+.env
+.env.*
+!.env.example
+.envrc
+secrets/
+credentials/
+
+# Documentation & CI
+docs/
+README.md
+LICENSE
+.github/
+.pre-commit-config.yaml
+.editorconfig
+
+# Databases & data
+data/
+*.db
+*.sqlite
+*.sql
+
+# OS & large files
+.DS_Store
+Thumbs.db
+*.mp4
+*.avi
+*.mov
+*.wmv

@@ -10,10 +10,11 @@ import { toast } from "react-hot-toast";
 
 /* Config */
 const API_URL =
-  import.meta.env.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:8000";
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 const authClient = axios.create({
-  baseURL: `${API_URL}/api/auth/`,
+  baseURL: API_URL ? `${API_URL}/api/accounts/` : "/api/accounts/",
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
   xsrfCookieName: "csrftoken",

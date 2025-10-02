@@ -7,7 +7,9 @@ from pathlib import Path
 
 from decouple import Csv, config
 
+# ───────────────────────────────────────────────────────────────────────────────
 # Core
+# ───────────────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -15,6 +17,13 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 ROOT_URLCONF = "backend.config.urls"
 WSGI_APPLICATION = "backend.config.wsgi.application"
 SITE_ID = 1
+
+# Project URLs & Email
+# Frontend base URL is used for building links (e.g., email verification) and for CORS/CSRF defaults in dev.
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="kontakt@valunds.se")
+# Keep Django's server-originated emails consistent
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # Apps
 INSTALLED_APPS = [
@@ -63,8 +72,7 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
-
-RATELIMIT_ENABLE = not DEBUG  # Enforce in production
+RATELIMIT_ENABLE = not DEBUG
 RATELIMIT_USE_CACHE = "default"
 
 # Auth
@@ -168,20 +176,32 @@ SIMPLE_JWT = {
 
 # CORS
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = config(
-    "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://127.0.0.1:5173",
-    cast=Csv()
-)
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        FRONTEND_URL,
+        "http://127.0.0.1:5173",
+    ]
+else:
+    # Production: same-origin (NGINX serves both)
+    CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
 
 # CSRF
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default=f"{FRONTEND_URL},http://127.0.0.1:5173" if DEBUG else FRONTEND_URL,
+    cast=Csv()
+)
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = "Lax"
 
 # Security (production)
 if not DEBUG:
+    # Proxy headers (for NGINX)
+    USE_X_FORWARDED_HOST = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    # SSL/TLS
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -211,8 +231,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend"
 if not DEBUG:
     EMAIL_HOST = config("EMAIL_HOST")
-    EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
-    EMAIL_USE_TLS = True
+    EMAIL_PORT = config("EMAIL_PORT", default=465, cast=int)
+    EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=True, cast=bool)
     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 

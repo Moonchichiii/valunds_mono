@@ -10,6 +10,10 @@ class User(AbstractUser):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(_("email address"), unique=True)
+    # Email verification
+    email_verified = models.BooleanField(default=False)
+    verification_token = models.CharField(max_length=64, blank=True, null=True)
+    verification_token_created = models.DateTimeField(blank=True, null=True)
 
     # User type for marketplace
     class UserType(models.TextChoices):
@@ -30,6 +34,7 @@ class User(AbstractUser):
         indexes = [
             models.Index(fields=["email"]),
             models.Index(fields=["user_type"]),
+            models.Index(fields=["verification_token"]),
         ]
 
     def __str__(self):
