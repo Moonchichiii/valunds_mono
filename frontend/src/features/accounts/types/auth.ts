@@ -5,6 +5,11 @@
   last_name?: string;
   user_type?: "freelancer" | "client" | "admin";
   date_joined?: string;
+  phone_number?: string;
+  address?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
 }
 
 export interface Tokens {
@@ -25,6 +30,11 @@ export interface RegisterRequest {
   last_name?: string;
   user_type?: "freelancer" | "client";
   username?: string;
+  phone_number?: string;
+  address?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
   terms_accepted?: boolean;
   privacy_policy_accepted?: boolean;
   marketing_consent?: boolean;

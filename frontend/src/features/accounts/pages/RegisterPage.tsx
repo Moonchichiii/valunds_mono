@@ -1,10 +1,11 @@
-﻿import { usePasswordStrength, useRegister } from '@/features/accounts/api/auth';
-import { Button } from '@/shared/components/ui/Button';
-import { Card } from '@/shared/components/ui/Card';
-import { Input } from '@/shared/components/ui/Input';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import React, { useCallback, useState } from 'react';
+﻿import { usePasswordStrength, useRegister } from "@/features/accounts/api/auth";
+import { Button } from "@/shared/components/ui/Button";
+import { Card } from "@/shared/components/ui/Card";
+import { Input } from "@/shared/components/ui/Input";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import React, { useCallback, useState } from "react";
+import { toast } from "react-hot-toast";
 
 interface FormData {
   firstName: string;
@@ -12,8 +13,13 @@ interface FormData {
   email: string;
   password: string;
   confirmPassword: string;
+  phoneNumber: string;
+  address: string;
+  city: string;
+  postcode: string;
+  country: string;
   acceptTerms: boolean;
-  userType: 'freelancer' | 'client';
+  userType: "freelancer" | "client";
 }
 
 interface FormErrors {
@@ -22,6 +28,10 @@ interface FormErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
+  phoneNumber?: string;
+  address?: string;
+  city?: string;
+  postcode?: string;
   acceptTerms?: string;
 }
 
@@ -29,13 +39,18 @@ export const RegisterPage = (): React.JSX.Element => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phoneNumber: "",
+    address: "",
+    city: "",
+    postcode: "",
+    country: "Sweden",
     acceptTerms: false,
-    userType: 'freelancer',
+    userType: "freelancer",
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -46,122 +61,122 @@ export const RegisterPage = (): React.JSX.Element => {
     const newErrors: FormErrors = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    } else if (formData.firstName.length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
+      newErrors.firstName = "First name is required";
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    } else if (formData.lastName.length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
+      newErrors.lastName = "Last name is required";
     }
 
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = "Please enter a valid email address";
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 12) {
-      newErrors.password = 'Password must be at least 12 characters';
+      newErrors.password = "Password is required";
     } else if (passwordStrength.score < 3) {
-      newErrors.password = 'Password is too weak. Please choose a stronger password.';
+      newErrors.password = "Password is too weak";
     }
 
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = "Phone number is required";
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
+    }
+
+    if (!formData.city.trim()) {
+      newErrors.city = "City is required";
+    }
+
+    if (!formData.postcode.trim()) {
+      newErrors.postcode = "Postal code is required";
     }
 
     if (!formData.acceptTerms) {
-      newErrors.acceptTerms = 'You must accept the terms and conditions';
+      newErrors.acceptTerms = "You must accept the terms";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData, passwordStrength]);
 
-  const handleInputChange = useCallback((field: keyof FormData, value: string | boolean): void => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  }, [errors]);
+  const handleSubmit = useCallback(
+    (e: React.FormEvent): void => {
+      e.preventDefault();
+      e.stopPropagation();
 
-  const handleSubmit = useCallback((e: React.FormEvent): void => {
-    e.preventDefault();
-
-    if (!validateForm()) return;
-
-    registerMutation.mutate(
-      {
-        email: formData.email,
-        password: formData.password,
-        password_confirm: formData.confirmPassword,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        user_type: formData.userType,
-        username: formData.email,
-        terms_accepted: true,
-        privacy_policy_accepted: true,
-        marketing_consent: false,
-        analytics_consent: false,
-      },
-      {
-        onSuccess: () => {
-          void navigate({ to: '/dashboard' });
-        },
+      // CRITICAL: Check mutation state directly
+      if (registerMutation.isPending) {
+        return;
       }
-    );
-  }, [formData, registerMutation, navigate, validateForm]);
 
-  const togglePasswordVisibility = useCallback((): void => {
-    setShowPassword(!showPassword);
-  }, [showPassword]);
+      if (!validateForm()) return;
 
-  const handleFirstNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
-    handleInputChange('firstName', e.target.value);
-  }, [handleInputChange]);
+      registerMutation.mutate(
+        {
+          email: formData.email,
+          password: formData.password,
+          password_confirm: formData.confirmPassword,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          user_type: formData.userType,
+          username: formData.email,
+          phone_number: formData.phoneNumber,
+          address: formData.address,
+          city: formData.city,
+          postcode: formData.postcode,
+          country: formData.country,
+          terms_accepted: true,
+          privacy_policy_accepted: true,
+          marketing_consent: false,
+          analytics_consent: false,
+        },
+        {
+          onSuccess: () => {
+            toast.success(
+              "Account created! Please check your email to verify your account."
+            );
+            setTimeout(() => {
+              void navigate({ to: "/login" });
+            }, 1500);
+          },
+          // onError is handled by the mutation hook automatically
+        }
+      );
+    },
+    [formData, registerMutation, navigate, validateForm]
+  );
 
-  const handleLastNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
-    handleInputChange('lastName', e.target.value);
-  }, [handleInputChange]);
+  const handleInputChange = useCallback(
+    (field: keyof FormData, value: string | boolean): void => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      if (errors[field as keyof FormErrors]) {
+        setErrors((prev) => ({ ...prev, [field]: undefined }));
+      }
+    },
+    [errors]
+  );
 
-  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
-    handleInputChange('email', e.target.value);
-  }, [handleInputChange]);
-
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
-    handleInputChange('password', e.target.value);
-  }, [handleInputChange]);
-
-  const handleConfirmPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
-    handleInputChange('confirmPassword', e.target.value);
-  }, [handleInputChange]);
-
-  const handleTermsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
-    handleInputChange('acceptTerms', e.target.checked);
-  }, [handleInputChange]);
-
-  const selectFreelancer = useCallback((): void => {
-    handleInputChange('userType', 'freelancer');
-  }, [handleInputChange]);
-
-  const selectClient = useCallback((): void => {
-    handleInputChange('userType', 'client');
-  }, [handleInputChange]);
-
-  const strengthColors = ['bg-error-500', 'bg-error-500', 'bg-warning-500', 'bg-accent-blue', 'bg-success-500'];
-  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  const strengthColors = [
+    "bg-error-500",
+    "bg-error-500",
+    "bg-warning-500",
+    "bg-accent-blue",
+    "bg-success-500",
+  ];
+  const strengthLabels = ["Very Weak", "Weak", "Fair", "Good", "Strong"];
 
   return (
-    <div className="min-h-screen bg-nordic-cream flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Back to Home */}
+    <div className="min-h-screen bg-nordic-cream flex items-center justify-center py-12 px-4">
+      <div className="max-w-2xl w-full space-y-8">
         <div className="flex items-center">
           <Link
             to="/"
@@ -172,7 +187,6 @@ export const RegisterPage = (): React.JSX.Element => {
           </Link>
         </div>
 
-        {/* Header */}
         <div className="text-center">
           <Link to="/" className="text-3xl font-bold text-accent-primary">
             Valunds
@@ -180,215 +194,253 @@ export const RegisterPage = (): React.JSX.Element => {
           <h2 className="mt-6 text-3xl font-semibold text-text-primary">
             Join the community
           </h2>
-          <p className="mt-2 text-text-secondary">
-            Create your Nordic professional account
-          </p>
         </div>
 
         {/* User Type Selection */}
         <Card className="bg-nordic-white">
-          <fieldset className="space-y-4">
-            <legend className="block text-sm font-medium text-text-primary">
-              I am a...
-            </legend>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={selectFreelancer}
-                className={`p-4 border-2 rounded-nordic-lg text-center transition-all ${
-                  formData.userType === 'freelancer'
-                    ? 'border-accent-blue bg-accent-blue/5 text-accent-blue'
-                    : 'border-border-medium text-text-secondary hover:border-border-light'
-                }`}
-                aria-pressed={formData.userType === 'freelancer'}
-                aria-describedby="freelancer-description"
-              >
-                <div className="font-medium">Professional</div>
-                <div className="text-xs mt-1" id="freelancer-description">
-                  Looking for projects
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={selectClient}
-                className={`p-4 border-2 rounded-nordic-lg text-center transition-all ${
-                  formData.userType === 'client'
-                    ? 'border-accent-blue bg-accent-blue/5 text-accent-blue'
-                    : 'border-border-medium text-text-secondary hover:border-border-light'
-                }`}
-                aria-pressed={formData.userType === 'client'}
-                aria-describedby="client-description"
-              >
-                <div className="font-medium">Client</div>
-                <div className="text-xs mt-1" id="client-description">
-                  Looking for talent
-                </div>
-              </button>
-            </div>
-          </fieldset>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handleInputChange("userType", "freelancer")}
+              className={`p-4 border-2 rounded-nordic-lg text-center transition-all ${
+                formData.userType === "freelancer"
+                  ? "border-accent-blue bg-accent-blue/5 text-accent-blue"
+                  : "border-border-medium text-text-secondary"
+              }`}
+            >
+              <div className="font-medium">Professional</div>
+              <div className="text-xs mt-1">Looking for projects</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleInputChange("userType", "client")}
+              className={`p-4 border-2 rounded-nordic-lg text-center transition-all ${
+                formData.userType === "client"
+                  ? "border-accent-blue bg-accent-blue/5 text-accent-blue"
+                  : "border-border-medium text-text-secondary"
+              }`}
+            >
+              <div className="font-medium">Client</div>
+              <div className="text-xs mt-1">Looking for talent</div>
+            </button>
+          </div>
         </Card>
 
         {/* Registration Form */}
         <Card className="bg-nordic-white">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="First name"
-                value={formData.firstName}
-                onChange={handleFirstNameChange}
-                placeholder="Erik"
-                error={errors.firstName}
-                required
-                autoComplete="given-name"
-              />
-              <Input
-                label="Last name"
-                value={formData.lastName}
-                onChange={handleLastNameChange}
-                placeholder="Andersson"
-                error={errors.lastName}
-                required
-                autoComplete="family-name"
-              />
-            </div>
-
-            <Input
-              label="Email address"
-              type="email"
-              value={formData.email}
-              onChange={handleEmailChange}
-              placeholder="erik@company.com"
-              error={errors.email}
-              required
-              autoComplete="email"
-            />
-
-            <div className="space-y-2">
-              <div className="relative">
+            {/* Personal Information */}
+            <div>
+              <h3 className="text-lg font-medium text-text-primary mb-4">
+                Personal Information
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={handlePasswordChange}
-                  placeholder="Create a strong password (min 12 characters)"
-                  error={errors.password}
+                  label="First name"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    handleInputChange("firstName", e.target.value)
+                  }
+                  error={errors.firstName}
                   required
-                  autoComplete="new-password"
-                  aria-describedby="password-strength"
                 />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="absolute right-3 top-[2.75rem] text-text-muted hover:text-text-secondary transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                <Input
+                  label="Last name"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    handleInputChange("lastName", e.target.value)
+                  }
+                  error={errors.lastName}
+                  required
+                />
               </div>
-
-              {/* Password Strength Indicator */}
-              {formData.password && (
-                <div
-                  className="space-y-2"
-                  id="password-strength"
-                  role="group"
-                  aria-labelledby="password-strength-label"
-                >
-                  <div className="flex space-x-1">
-                    {[0, 1, 2, 3, 4].map((level) => (
-                      <div
-                        key={level}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          level < passwordStrength.score ? strengthColors[passwordStrength.score - 1] : 'bg-border-light'
-                        }`}
-                        aria-hidden="true"
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-text-muted" id="password-strength-label">
-                    Password strength: {strengthLabels[passwordStrength.score - 1] ?? 'Enter a password'}
-                  </p>
-                  {passwordStrength.feedback.length > 0 && (
-                    <ul className="text-xs text-text-muted space-y-1">
-                      {passwordStrength.feedback.map((feedback) => (
-                        <li key={feedback}>• {feedback}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
             </div>
 
-            <Input
-              label="Confirm password"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleConfirmPasswordChange}
-              placeholder="Confirm your password"
-              error={errors.confirmPassword}
-              required
-              autoComplete="new-password"
-            />
+            {/* Contact Information */}
+            <div>
+              <h3 className="text-lg font-medium text-text-primary mb-4">
+                Contact Information
+              </h3>
+              <div className="space-y-4">
+                <Input
+                  label="Email address"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  error={errors.email}
+                  required
+                />
+                <Input
+                  label="Phone number"
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={(e) =>
+                    handleInputChange("phoneNumber", e.target.value)
+                  }
+                  placeholder="+46 70 123 45 67"
+                  error={errors.phoneNumber}
+                  required
+                />
+              </div>
+            </div>
 
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="accept-terms"
-                    name="accept-terms"
-                    type="checkbox"
-                    checked={formData.acceptTerms}
-                    onChange={handleTermsChange}
-                    className="h-4 w-4 text-accent-blue focus:ring-accent-blue border-border-medium rounded"
-                    aria-describedby="terms-description terms-error"
+            {/* Address Information */}
+            <div>
+              <h3 className="text-lg font-medium text-text-primary mb-4">
+                Address
+              </h3>
+              <div className="space-y-4">
+                <Input
+                  label="Street address"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  error={errors.address}
+                  required
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="City"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange("city", e.target.value)}
+                    error={errors.city}
+                    required
+                  />
+                  <Input
+                    label="Postal code"
+                    value={formData.postcode}
+                    onChange={(e) =>
+                      handleInputChange("postcode", e.target.value)
+                    }
+                    error={errors.postcode}
                     required
                   />
                 </div>
-                <div className="ml-3">
-                  <label htmlFor="accept-terms" className="text-sm text-text-secondary" id="terms-description">
-                    I accept the{' '}
-                    <a
-                      href="/terms"
-                      className="text-accent-blue hover:text-accent-primary"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Terms of Service
-                    </a>{' '}
-                    and{' '}
-                    <a
-                      href="/privacy"
-                      className="text-accent-blue hover:text-accent-primary"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Privacy Policy
-                    </a>
-                  </label>
-                  {errors.acceptTerms && (
-                    <p className="text-sm text-error-500 mt-1" id="terms-error">{errors.acceptTerms}</p>
-                  )}
-                </div>
               </div>
             </div>
+
+            {/* Password */}
+            <div>
+              <h3 className="text-lg font-medium text-text-primary mb-4">
+                Security
+              </h3>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Input
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    error={errors.password}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-[2.75rem] text-text-muted"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                {formData.password && (
+                  <div className="space-y-2">
+                    <div className="flex space-x-1">
+                      {[0, 1, 2, 3, 4].map((level) => (
+                        <div
+                          key={level}
+                          className={`h-1 flex-1 rounded-full ${
+                            level < passwordStrength.score
+                              ? strengthColors[passwordStrength.score - 1]
+                              : "bg-border-light"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-text-muted">
+                      Password strength:{" "}
+                      {strengthLabels[passwordStrength.score - 1] ??
+                        "Enter a password"}
+                    </p>
+                  </div>
+                )}
+
+                <Input
+                  label="Confirm password"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    handleInputChange("confirmPassword", e.target.value)
+                  }
+                  error={errors.confirmPassword}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Terms */}
+            <div className="flex items-start">
+              <input
+                id="accept-terms"
+                type="checkbox"
+                checked={formData.acceptTerms}
+                onChange={(e) =>
+                  handleInputChange("acceptTerms", e.target.checked)
+                }
+                className="h-4 w-4 text-accent-blue focus:ring-accent-blue border-border-medium rounded mt-1"
+              />
+              <label
+                htmlFor="accept-terms"
+                className="ml-3 text-sm text-text-secondary"
+              >
+                I accept the{" "}
+                <a
+                  href="/terms"
+                  className="text-accent-blue hover:text-accent-primary"
+                  target="_blank"
+                >
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  className="text-accent-blue hover:text-accent-primary"
+                  target="_blank"
+                >
+                  Privacy Policy
+                </a>
+              </label>
+            </div>
+            {errors.acceptTerms && (
+              <p className="text-sm text-error-500 mt-1">
+                {errors.acceptTerms}
+              </p>
+            )}
 
             <Button
               type="submit"
               size="lg"
               loading={registerMutation.isPending}
+              disabled={registerMutation.isPending}
               className="w-full"
             >
-              {registerMutation.isPending ? 'Creating account...' : 'Create account'}
+              {registerMutation.isPending
+                ? "Creating account..."
+                : "Create account"}
             </Button>
           </form>
 
-          {/* Login Link */}
           <div className="mt-6 text-center">
             <p className="text-text-secondary">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link
                 to="/login"
-                className="text-accent-blue hover:text-accent-primary font-medium transition-colors"
+                className="text-accent-blue hover:text-accent-primary font-medium"
               >
                 Sign in here
               </Link>

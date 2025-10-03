@@ -53,6 +53,8 @@
     "typescript": "latest",
     "typescript-eslint": "^8.45.0",
     "vite": "latest",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@types/react": "^19.1.17",
+    "@types/react-dom": "^19.1.11"
   }
 }

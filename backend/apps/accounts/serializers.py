@@ -8,7 +8,19 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name", "user_type", "date_joined"]
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "user_type",
+            "date_joined",
+            "phone_number",
+            "address",
+            "city",
+            "postcode",
+            "country",
+        ]
         read_only_fields = ["id", "date_joined"]
 
 
@@ -25,7 +37,18 @@ class RegisterSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "user_type",
+            "phone_number",
+            "address",
+            "city",
+            "postcode",
+            "country",
         ]
+        extra_kwargs = {
+            "phone_number": {"required": True},
+            "address": {"required": True},
+            "city": {"required": True},
+            "postcode": {"required": True},
+        }
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
@@ -33,10 +56,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         attrs.pop("password_confirm")
         return attrs
 
+    def validate_phone_number(self, value):
+        cleaned = value.replace(" ", "").replace("-", "").replace("+", "")
+        if not cleaned.isdigit() or len(cleaned) < 8:
+            raise serializers.ValidationError("Please enter a valid phone number")
+        return value
+
     def create(self, validated_data):
-        # Create inactive user until email is verified
         user = User.objects.create_user(
-            username=validated_data["email"],  # AbstractUser requires it
+            username=validated_data["email"],
             **validated_data,
         )
         user.is_active = False

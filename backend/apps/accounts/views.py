@@ -183,10 +183,18 @@ class VerifyEmailView(APIView):
         if not token:
             return Response({"detail": "Missing token"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # First, fetch the user
         try:
             user = User.objects.get(verification_token=token)
         except User.DoesNotExist:
             return Response({"detail": "Invalid verification token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # NOW you can check if already verified
+        if user.email_verified:
+            return Response(
+                {"detail": "Email already verified. Please log in."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # token age check: 24 hours
         if not user.verification_token_created or (

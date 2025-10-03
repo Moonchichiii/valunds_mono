@@ -6,16 +6,15 @@ from django.utils.translation import gettext_lazy as _
 
 
 class User(AbstractUser):
-    """Custom user model with UUID primary key"""
+    """Custom user model with UUID primary key and extended profile fields"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(_("email address"), unique=True)
-    # Email verification
+
     email_verified = models.BooleanField(default=False)
     verification_token = models.CharField(max_length=64, blank=True, null=True)
     verification_token_created = models.DateTimeField(blank=True, null=True)
 
-    # User type for marketplace
     class UserType(models.TextChoices):
         FREELANCER = "freelancer", _("Freelancer")
         CLIENT = "client", _("Client")
@@ -25,7 +24,14 @@ class User(AbstractUser):
         max_length=20, choices=UserType.choices, default=UserType.FREELANCER
     )
 
-    # Remove username requirement
+    phone_number = models.CharField(
+        _("phone number"), max_length=20, blank=True, help_text="Contact phone number"
+    )
+    address = models.CharField(_("street address"), max_length=255, blank=True)
+    city = models.CharField(_("city"), max_length=100, blank=True)
+    postcode = models.CharField(_("postal code"), max_length=20, blank=True)
+    country = models.CharField(_("country"), max_length=100, blank=True, default="Sweden")
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
@@ -35,7 +41,14 @@ class User(AbstractUser):
             models.Index(fields=["email"]),
             models.Index(fields=["user_type"]),
             models.Index(fields=["verification_token"]),
+            models.Index(fields=["city"]),
         ]
 
     def __str__(self):
         return self.email
+
+    @property
+    def full_address(self):
+        """Returns complete formatted address"""
+        parts = [self.address, self.postcode, self.city, self.country]
+        return ", ".join(filter(None, parts))

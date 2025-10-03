@@ -2,6 +2,7 @@
 import { Home } from "@/app/pages/Home";
 import { LoginPage } from "@/features/accounts/pages/LoginPage";
 import { RegisterPage } from "@/features/accounts/pages/RegisterPage";
+import { VerifyEmailPage } from "@/features/accounts/pages/VerifyEmailPage";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { NotFoundPage } from "@/shared/components/NotFoundPage";
 import "@/styles/index.css";
@@ -33,7 +34,7 @@ const Contact = lazy(() =>
 );
 const Dashboard = lazy(() => import("@/app/pages/Dashboard"));
 
-// Loading fallback component
+// Loading fallback
 const LoadingSpinner = (): ReactElement => (
   <div className="flex items-center justify-center min-h-[200px]">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-blue" />
@@ -41,7 +42,7 @@ const LoadingSpinner = (): ReactElement => (
   </div>
 );
 
-// Suspense wrapper for lazy routes
+// Suspense wrapper
 const SuspenseWrapper = ({
   children,
 }: {
@@ -50,14 +51,14 @@ const SuspenseWrapper = ({
   <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
 );
 
-// Root route with error boundary
+// Root route
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
   errorComponent: ErrorBoundary,
   notFoundComponent: NotFoundPage,
 });
 
-// Main layout route (marketing pages)
+// Main layout (marketing pages)
 const mainLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "main-layout",
@@ -136,6 +137,13 @@ const registerRoute = createRoute({
   component: RegisterPage,
 });
 
+// ✅ NEW: Email verification route
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/verify-email/$token",
+  component: VerifyEmailPage,
+});
+
 // Dashboard route
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -157,11 +165,11 @@ const routeTree = rootRoute.addChildren([
     professionalsRoute,
     contactRoute,
   ]),
-  authLayoutRoute.addChildren([loginRoute, registerRoute]),
+  authLayoutRoute.addChildren([loginRoute, registerRoute, verifyEmailRoute]),
   dashboardRoute,
 ]);
 
-// Create router instance
+// Create router
 const router = createRouter({
   routeTree,
   defaultPreload: "intent",
@@ -170,7 +178,7 @@ const router = createRouter({
   defaultNotFoundComponent: NotFoundPage,
 });
 
-// Type registration for TypeScript
+// Type registration
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
