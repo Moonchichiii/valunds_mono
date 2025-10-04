@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 import App from "./App";
@@ -54,28 +55,28 @@ if (!container) {
 const root = createRoot(container);
 
 root.render(
-  //<StrictMode>
-  <QueryClientProvider client={queryClient}>
-    <App />
-    <Toaster
-      position="top-right"
-      toastOptions={{
-        duration: 4000,
-        className: "nordic-toast",
-        style: {
-          background: "#f7f6f4",
-          color: "#1a1a1a",
-          border: "1px solid #e8e6e3",
-        },
-      }}
-    />
-    {import.meta.env.DEV && (
-      <ReactQueryDevtools
-        initialIsOpen={false}
-        position="bottom"
-        buttonPosition="bottom-right"
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          className: "nordic-toast",
+          style: {
+            background: "#f7f6f4",
+            color: "#1a1a1a",
+            border: "1px solid #e8e6e3",
+          },
+        }}
       />
-    )}
-  </QueryClientProvider>
-  //</StrictMode>
+      {import.meta.env.DEV && (
+        <ReactQueryDevtools
+          initialIsOpen={false}
+          position="bottom"
+          buttonPosition="bottom-right"
+        />
+      )}
+    </QueryClientProvider>
+  </StrictMode>
 );

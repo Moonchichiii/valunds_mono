@@ -4,8 +4,7 @@ import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import React, { useCallback, useState } from "react";
-import { toast } from "react-hot-toast";
+import React, { useCallback, useRef, useState } from "react";
 
 interface FormData {
   firstName: string;
@@ -53,6 +52,9 @@ export const RegisterPage = (): React.JSX.Element => {
     userType: "freelancer",
   });
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Ref-based submission guard to avoid double submissions
+  const isSubmittingRef = useRef(false);
 
   const registerMutation = useRegister();
   const passwordStrength = usePasswordStrength(formData.password);
@@ -113,12 +115,13 @@ export const RegisterPage = (): React.JSX.Element => {
       e.preventDefault();
       e.stopPropagation();
 
-      // CRITICAL: Check mutation state directly
-      if (registerMutation.isPending) {
+      if (isSubmittingRef.current || registerMutation.isPending) {
         return;
       }
 
       if (!validateForm()) return;
+
+      isSubmittingRef.current = true;
 
       registerMutation.mutate(
         {
@@ -141,14 +144,17 @@ export const RegisterPage = (): React.JSX.Element => {
         },
         {
           onSuccess: () => {
-            toast.success(
-              "Account created! Please check your email to verify your account."
-            );
-            setTimeout(() => {
-              void navigate({ to: "/login" });
-            }, 1500);
+            // Navigate to check-email page with email in URL params
+            void navigate({
+              to: "/check-email",
+              search: { email: formData.email },
+            });
           },
-          // onError is handled by the mutation hook automatically
+          onSettled: () => {
+            setTimeout(() => {
+              isSubmittingRef.current = false;
+            }, 2000);
+          },
         }
       );
     },

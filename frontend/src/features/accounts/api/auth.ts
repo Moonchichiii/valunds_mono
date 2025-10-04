@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   LoginRequest,
   RegisterRequest,
+  RegistrationResponse,
   User,
 } from "@/features/accounts/types/auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -97,9 +98,12 @@ const authApi = {
     return data;
   },
 
-  async register(payload: RegisterRequest): Promise<AuthResponse> {
-    const { data } = await authClient.post<AuthResponse>("register/", payload);
-    setAccessToken(data.tokens.access);
+  async register(payload: RegisterRequest): Promise<RegistrationResponse> {
+    const { data } = await authClient.post<RegistrationResponse>(
+      "register/",
+      payload
+    );
+    // Don't set tokens - user isn't authenticated yet
     return data;
   },
 
@@ -213,15 +217,11 @@ export const useLogin = () => {
 };
 
 export const useRegister = () => {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: authApi.register,
-    onSuccess: (data) => {
-      queryClient.setQueryData(["auth", "me"], data.user);
-      persistUser(data.user);
-      void queryClient.invalidateQueries({ queryKey: ["auth"] });
-      toast.success("Welcome to Valunds!");
+    onSuccess: () => {
+      // Don't set user data or invalidate - user not authenticated yet
+      toast.success("Account created! Check your email to verify.");
     },
     onError: (error) => {
       toast.error(extractError(error));

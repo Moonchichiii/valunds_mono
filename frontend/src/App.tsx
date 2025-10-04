@@ -34,6 +34,13 @@ const Contact = lazy(() =>
 );
 const Dashboard = lazy(() => import("@/app/pages/Dashboard"));
 
+// NEW: Import the new page
+const CheckEmail = lazy(() =>
+  import("@/features/accounts/pages/CheckEmailPage.tsx").then((module) => ({
+    default: module.CheckEmailPage,
+  }))
+);
+
 // Loading fallback
 const LoadingSpinner = (): ReactElement => (
   <div className="flex items-center justify-center min-h-[200px]">
@@ -144,6 +151,17 @@ const verifyEmailRoute = createRoute({
   component: VerifyEmailPage,
 });
 
+// ✅ NEW: Check email route (uses auth layout)
+const checkEmailRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/check-email",
+  component: () => (
+    <SuspenseWrapper>
+      <CheckEmail />
+    </SuspenseWrapper>
+  ),
+});
+
 // Dashboard route
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -165,7 +183,13 @@ const routeTree = rootRoute.addChildren([
     professionalsRoute,
     contactRoute,
   ]),
-  authLayoutRoute.addChildren([loginRoute, registerRoute, verifyEmailRoute]),
+  // Auth children now include the new checkEmailRoute
+  authLayoutRoute.addChildren([
+    loginRoute,
+    registerRoute,
+    verifyEmailRoute,
+    checkEmailRoute,
+  ]),
   dashboardRoute,
 ]);
 

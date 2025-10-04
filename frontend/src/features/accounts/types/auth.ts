@@ -45,3 +45,9 @@ export interface AuthResponse {
   user: User;
   tokens: Tokens;
 }
+
+// NEW: Registration response (no tokens, user not authenticated)
+export interface RegistrationResponse {
+  message: string;
+  email: string;
+}
