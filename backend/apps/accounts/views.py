@@ -17,6 +17,13 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .security_utils import (
+    check_and_notify_new_device,
+    get_client_ip,
+    send_email_change_notification,
+    send_password_change_notification,
+    track_login_attempt,
+)
 from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
@@ -30,7 +37,7 @@ def set_auth_cookies(response, tokens):
         httponly=True,
         secure=not settings.DEBUG,
         samesite="Lax",
-        max_age=7 * 24 * 60 * 60,
+        max_age=30 * 24 * 60 * 60,
     )
     return response
 
@@ -84,7 +91,7 @@ class RegisterView(APIView):
 class LoginView(APIView):
     """
     Rate limited to 5 attempts per 15 minutes per IP address.
-    Also tracks failed login attempts per user account.
+    Also tracks failed/successful login attempts and notifies on new device.
     """
     permission_classes = [AllowAny]
 
@@ -128,6 +135,12 @@ class LoginView(APIView):
         )
 
         if not user:
+            # If user exists, record failed attempt with IP/device
+            try:
+                failed_user = User.objects.get(email=email)
+                track_login_attempt(failed_user, request, success=False)
+            except User.DoesNotExist:
+                pass
             # Failed login - track attempt
             self._handle_failed_login(email)
             return Response(
@@ -151,6 +164,11 @@ class LoginView(APIView):
             user.failed_login_attempts = 0
             user.last_failed_login = None
             user.save(update_fields=['failed_login_attempts', 'last_failed_login'])
+
+        # Record successful login with IP/device and notify if new device
+        login_history = track_login_attempt(user, request, success=True)
+        if login_history:
+            check_and_notify_new_device(user, login_history)
 
         refresh = RefreshToken.for_user(user)
         tokens = {
@@ -329,8 +347,21 @@ class ChangePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Validate strength
+        try:
+            validate_password(new, request.user)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Capture IP for audit
+        ip_address = get_client_ip(request)
+
+        # Change password
         request.user.set_password(new)
         request.user.save()
+
+        # Security email + event log
+        send_password_change_notification(request.user, ip_address)
 
         # Invalidate all sessions except current
         refresh = RefreshToken.for_user(request.user)
@@ -348,12 +379,16 @@ class ChangeEmailView(APIView):
     def post(self, request):
         new_email = request.data.get('email')
 
+        if not new_email:
+            return Response({"detail": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
         if User.objects.filter(email=new_email).exists():
             return Response(
                 {"detail": "Email already in use"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        old_email = request.user.email
         # Generate new verification token
         token = get_random_string(64)
         request.user.email = new_email
@@ -362,11 +397,25 @@ class ChangeEmailView(APIView):
         request.user.verification_token_created = timezone.now()
         request.user.save()
 
-        # Send verification email to new address
-        verification_url = f"{settings.FRONTEND_URL}/verify-email/{token}"
-        send_mail(...)  # Same as registration
+        # Security notice to OLD email
+        send_email_change_notification(request.user, old_email, new_email)
 
-        return Response({"detail": "Verification email sent to new address"})
+        # Verification email to NEW address
+        verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email/{token}"
+        html_message = render_to_string('accounts/verify_email.html', {
+            'user': request.user,
+            'verification_url': verification_url,
+        })
+        plain_message = strip_tags(html_message)
+        send_mail(
+            subject="Verify your new Valunds email address",
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[new_email],
+            html_message=html_message,
+        )
+
+        return Response({"detail": "Verification email sent to new address. Security notification sent to old address."})
 
 
 class DeleteAccountView(APIView):
@@ -507,6 +556,9 @@ class ResetPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Capture IP for audit
+        ip_address = get_client_ip(request)
+
         # Update password and clear reset token
         user.set_password(new_password)
         user.password_reset_token = None
@@ -515,72 +567,13 @@ class ResetPasswordView(APIView):
         user.account_locked_until = None  # Unlock account if locked
         user.save()
 
-        # Send confirmation email
-        html_message = render_to_string('accounts/password_changed.html', {
-            'user': user,
-        })
-        plain_message = strip_tags(html_message)
-
-        send_mail(
-            subject="Your Valunds password has been changed",
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            html_message=html_message,
-        )
+        # Unified password-change notification + SecurityEvent log
+        send_password_change_notification(user, ip_address)
 
         return Response(
             {"detail": "Password successfully reset. You can now log in with your new password."},
             status=status.HTTP_200_OK
         )
-
-@method_decorator(ratelimit(key='ip', rate='5/15m', method='POST'), name='dispatch')
-class LoginView(APIView):
-    """
-    Rate limited to 5 attempts per 15 minutes per IP address.
-    Returns 429 Too Many Requests if limit exceeded.
-    """
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user = authenticate(
-            username=serializer.validated_data["email"],
-            password=serializer.validated_data["password"],
-        )
-
-        if not user:
-            return Response(
-                {"detail": "Invalid credentials"},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        # Check if email is verified
-        if not user.email_verified:
-            return Response(
-                {
-                    "detail": "Email not verified. Please check your email for the verification link.",
-                    "code": "email_not_verified",
-                    "email": user.email
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        refresh = RefreshToken.for_user(user)
-        tokens = {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-        }
-
-        response = Response({
-            "user": UserSerializer(user).data,
-            "tokens": tokens,
-        })
-
-        return set_auth_cookies(response, tokens)
-
 
 
 @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'), name='dispatch')

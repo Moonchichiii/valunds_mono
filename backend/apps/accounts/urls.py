@@ -1,5 +1,6 @@
-from django.urls import path
+from django.urls import include, path
 
+from .oauth_views import GoogleLoginCallbackView, GoogleLoginInitiateView
 from .views import (
     ChangeEmailView,
     ChangePasswordView,
@@ -32,4 +33,7 @@ urlpatterns = [
     path("settings/delete/", DeleteAccountView.as_view(), name="delete-account"),
     path("password-reset/request/", RequestPasswordResetView.as_view(), name="request-password-reset"),
     path("password-reset/confirm/", ResetPasswordView.as_view(), name="reset-password"),
+    path('oauth/', include('allauth.socialaccount.urls')),
+    path('oauth/google/callback/', GoogleLoginCallbackView.as_view(), name='google-callback'),
+    path('oauth/google/initiate/', GoogleLoginInitiateView.as_view(), name='google-initiate'),
 ]

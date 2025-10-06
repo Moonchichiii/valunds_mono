@@ -1,5 +1,3 @@
-// frontend/src/features/accounts/pages/ForgotPasswordPage.tsx
-
 import { useRequestPasswordReset } from "@/features/accounts/api/auth";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";

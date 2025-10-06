@@ -34,6 +34,7 @@ const Contact = lazy(() =>
   import("@/app/pages/Contact").then((module) => ({ default: module.Contact }))
 );
 const Dashboard = lazy(() => import("@/app/pages/Dashboard"));
+
 const CheckEmail = lazy(() =>
   import("@/features/accounts/pages/CheckEmailPage").then((module) => ({
     default: module.CheckEmailPage,
@@ -42,6 +43,12 @@ const CheckEmail = lazy(() =>
 const Settings = lazy(() =>
   import("@/features/accounts/pages/SettingsPage").then((module) => ({
     default: module.SettingsPage,
+  }))
+);
+
+const OAuthCallback = lazy(() =>
+  import("@/features/accounts/pages/OAuthCallbackPage").then((module) => ({
+    default: module.OAuthCallbackPage,
   }))
 );
 
@@ -176,6 +183,16 @@ const checkEmailRoute = createRoute({
   ),
 });
 
+const oauthCallbackRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/oauth/callback",
+  component: () => (
+    <SuspenseWrapper>
+      <OAuthCallback />
+    </SuspenseWrapper>
+  ),
+});
+
 const forgotPasswordRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: "/forgot-password",
@@ -242,6 +259,7 @@ const routeTree = rootRoute.addChildren([
     checkEmailRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
+    oauthCallbackRoute,
   ]),
   protectedLayoutRoute.addChildren([dashboardRoute, settingsRoute]),
 ]);

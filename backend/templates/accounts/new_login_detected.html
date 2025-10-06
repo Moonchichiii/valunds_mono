@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Login Detected</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f7f6f4;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 1px solid #e8e6e3;">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #2c3e50;">Valunds</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h2 style="margin: 0 0 20px; font-size: 24px; font-weight: 600; color: #1a1a1a;">
+                                New Login Detected
+                            </h2>
+
+                            <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #666666;">
+                                Hi {{ user.first_name|default:user.email }},
+                            </p>
+
+                            <p style="margin: 0 0 30px; font-size: 16px; line-height: 1.6; color: #666666;">
+                                We detected a login to your Valunds account from a new device or location. If this was you, you can safely ignore this email.
+                            </p>
+
+                            <!-- Login Details -->
+                            <div style="background-color: #f4f3f0; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                                <p style="margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: #666666;">
+                                    <strong>Login Details:</strong>
+                                </p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: #666666;">
+                                    <li style="margin-bottom: 8px;">Time: {{ timestamp|date:"F j, Y, g:i A" }}</li>
+                                    <li style="margin-bottom: 8px;">Location: {{ location|default:"Unknown" }}</li>
+                                    <li style="margin-bottom: 8px;">Device: {{ device_type|default:"Unknown" }}</li>
+                                    <li style="margin-bottom: 8px;">Browser: {{ browser|default:"Unknown" }}</li>
+                                    <li style="margin-bottom: 0;">IP Address: {{ ip_address }}</li>
+                                </ul>
+                            </div>
+
+                            <!-- Warning Box -->
+                            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 30px;">
+                                <p style="margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: #856404;">
+                                    <strong>If you didn't sign in:</strong>
+                                </p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: #856404;">
+                                    <li style="margin-bottom: 8px;">Change your password immediately</li>
+                                    <li style="margin-bottom: 8px;">Review your recent account activity</li>
+                                    <li style="margin-bottom: 0;">Contact us at <a href="mailto:security@valunds.com" style="color: #4a90a4; text-decoration: none;">security@valunds.com</a></li>
+                                </ul>
+                            </div>
+
+                            <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #666666;">
+                                This notification helps protect your account from unauthorized access.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f7f6f4; border-top: 1px solid #e8e6e3; border-radius: 0 0 12px 12px;">
+                            <p style="margin: 0 0 10px; font-size: 14px; color: #999999; text-align: center;">
+                                Best regards,<br>The Valunds Team
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #999999; text-align: center;">
+                                © 2025 Valunds. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+
+<!-- backend/templates/accounts/email_change_notification.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Address Change Request</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f7f6f4;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 1px solid #e8e6e3;">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #2c3e50;">Valunds</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h2 style="margin: 0 0 20px; font-size: 24px; font-weight: 600; color: #1a1a1a;">
+                                Email Address Change Request
+                            </h2>
+
+                            <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #666666;">
+                                Hi {{ user.first_name|default:user.email }},
+                            </p>
+
+                            <p style="margin: 0 0 30px; font-size: 16px; line-height: 1.6; color: #666666;">
+                                A request was made to change the email address associated with your Valunds account.
+                            </p>
+
+                            <!-- Change Details -->
+                            <div style="background-color: #f4f3f0; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                                <p style="margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: #666666;">
+                                    <strong>Change Details:</strong>
+                                </p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: #666666;">
+                                    <li style="margin-bottom: 8px;">Old Email: {{ old_email }}</li>
+                                    <li style="margin-bottom: 0;">New Email: {{ new_email }}</li>
+                                </ul>
+                            </div>
+
+                            <!-- Security Notice -->
+                            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 30px;">
+                                <p style="margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: #856404;">
+                                    <strong>If you made this change:</strong>
+                                </p>
+                                <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: #856404;">
+                                    A verification link has been sent to your new email address. You'll need to verify it to complete the change.
+                                </p>
+                                <p style="margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: #856404;">
+                                    <strong>If you didn't request this:</strong>
+                                </p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: #856404;">
+                                    <li style="margin-bottom: 8px;">Your account may be compromised</li>
+                                    <li style="margin-bottom: 8px;">Change your password immediately</li>
+                                    <li style="margin-bottom: 0;">Contact us at <a href="mailto:security@valunds.com" style="color: #4a90a4; text-decoration: none;">security@valunds.com</a></li>
+                                </ul>
+                            </div>
+
+                            <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #666666;">
+                                Until the new email is verified, you can still log in with your current email address.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f7f6f4; border-top: 1px solid #e8e6e3; border-radius: 0 0 12px 12px;">
+                            <p style="margin: 0 0 10px; font-size: 14px; color: #999999; text-align: center;">
+                                Best regards,<br>The Valunds Team
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #999999; text-align: center;">
+                                © 2025 Valunds. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

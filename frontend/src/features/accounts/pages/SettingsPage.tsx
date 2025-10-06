@@ -394,7 +394,7 @@ const AccountSection = () => {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                variant="danger" // Changed from "ghost" with custom classes
+                variant="danger"
                 loading={deleteAccountMutation.isPending}
               >
                 Yes, Delete My Account

@@ -1,6 +1,3 @@
-// frontend/src/features/accounts/pages/CheckEmailPage.tsx
-// Replace entire file
-
 import { useResendVerification } from "@/features/accounts/api/auth";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";

@@ -26,6 +26,8 @@ djangorestframework-simplejwt[crypto]==5.5.1
 django-allauth==65.11.2
 cryptography==42.0.2
 django-ratelimit
+django-ipware==7.0.1
+
 
 # API Documentation
 drf-spectacular==0.28.0
