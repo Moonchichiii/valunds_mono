@@ -5,6 +5,7 @@ import { RegisterPage } from "@/features/accounts/pages/RegisterPage";
 import { VerifyEmailPage } from "@/features/accounts/pages/VerifyEmailPage";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { NotFoundPage } from "@/shared/components/NotFoundPage";
+import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import "@/styles/index.css";
 import {
   createRootRoute,
@@ -33,11 +34,26 @@ const Contact = lazy(() =>
   import("@/app/pages/Contact").then((module) => ({ default: module.Contact }))
 );
 const Dashboard = lazy(() => import("@/app/pages/Dashboard"));
-
-// NEW: Import the new page
 const CheckEmail = lazy(() =>
-  import("@/features/accounts/pages/CheckEmailPage.tsx").then((module) => ({
+  import("@/features/accounts/pages/CheckEmailPage").then((module) => ({
     default: module.CheckEmailPage,
+  }))
+);
+const Settings = lazy(() =>
+  import("@/features/accounts/pages/SettingsPage").then((module) => ({
+    default: module.SettingsPage,
+  }))
+);
+
+const ForgotPassword = lazy(() =>
+  import("@/features/accounts/pages/ForgotPasswordPage").then((module) => ({
+    default: module.ForgotPasswordPage,
+  }))
+);
+
+const ResetPassword = lazy(() =>
+  import("@/features/accounts/pages/ResetPasswordPage").then((module) => ({
+    default: module.ResetPasswordPage,
   }))
 );
 
@@ -144,14 +160,12 @@ const registerRoute = createRoute({
   component: RegisterPage,
 });
 
-// ✅ NEW: Email verification route
 const verifyEmailRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: "/verify-email/$token",
   component: VerifyEmailPage,
 });
 
-// ✅ NEW: Check email route (uses auth layout)
 const checkEmailRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: "/check-email",
@@ -162,16 +176,54 @@ const checkEmailRoute = createRoute({
   ),
 });
 
-// Dashboard route
-const dashboardRoute = createRoute({
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/forgot-password",
+  component: () => (
+    <SuspenseWrapper>
+      <ForgotPassword />
+    </SuspenseWrapper>
+  ),
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/reset-password/$token",
+  component: () => (
+    <SuspenseWrapper>
+      <ResetPassword />
+    </SuspenseWrapper>
+  ),
+});
+
+// Protected layout route
+const protectedLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
+  id: "protected-layout",
+  component: ProtectedRoute,
+  errorComponent: ErrorBoundary,
+});
+
+// Dashboard route (protected)
+const dashboardRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
   path: "/dashboard",
   component: () => (
     <SuspenseWrapper>
       <Dashboard />
     </SuspenseWrapper>
   ),
-  errorComponent: ErrorBoundary,
+});
+
+// Settings route (protected)
+const settingsRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/settings",
+  component: () => (
+    <SuspenseWrapper>
+      <Settings />
+    </SuspenseWrapper>
+  ),
 });
 
 // Build route tree
@@ -183,14 +235,15 @@ const routeTree = rootRoute.addChildren([
     professionalsRoute,
     contactRoute,
   ]),
-  // Auth children now include the new checkEmailRoute
   authLayoutRoute.addChildren([
     loginRoute,
     registerRoute,
     verifyEmailRoute,
     checkEmailRoute,
+    forgotPasswordRoute,
+    resetPasswordRoute,
   ]),
-  dashboardRoute,
+  protectedLayoutRoute.addChildren([dashboardRoute, settingsRoute]),
 ]);
 
 // Create router

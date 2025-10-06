@@ -127,6 +127,33 @@ const authApi = {
       throw error;
     }
   },
+
+  async requestPasswordReset(email: string): Promise<{ detail: string }> {
+    const { data } = await authClient.post<{ detail: string }>(
+      "password-reset/request/",
+      { email }
+    );
+    return data;
+  },
+
+  async resetPassword(
+    token: string,
+    password: string
+  ): Promise<{ detail: string }> {
+    const { data } = await authClient.post<{ detail: string }>(
+      "password-reset/confirm/",
+      { token, password }
+    );
+    return data;
+  },
+
+  async resendVerification(email: string): Promise<{ detail: string }> {
+    const { data } = await authClient.post<{ detail: string }>(
+      "resend-verification/",
+      { email }
+    );
+    return data;
+  },
 };
 
 /* Local Storage */
@@ -240,6 +267,44 @@ export const useLogout = () => {
       persistUser(null);
       setAccessToken(null);
       toast.success("Signed out");
+    },
+  });
+};
+
+// Add hooks
+export const useRequestPasswordReset = () => {
+  return useMutation({
+    mutationFn: (email: string) => authApi.requestPasswordReset(email),
+    onSuccess: () => {
+      toast.success("Check your email for reset instructions");
+    },
+    onError: (error) => {
+      toast.error(extractError(error));
+    },
+  });
+};
+
+export const useResetPassword = () => {
+  return useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      authApi.resetPassword(token, password),
+    onSuccess: () => {
+      toast.success("Password reset successful! You can now log in.");
+    },
+    onError: (error) => {
+      toast.error(extractError(error));
+    },
+  });
+};
+
+export const useResendVerification = () => {
+  return useMutation({
+    mutationFn: (email: string) => authApi.resendVerification(email),
+    onSuccess: () => {
+      toast.success("Verification email sent! Check your inbox.");
+    },
+    onError: (error) => {
+      toast.error(extractError(error));
     },
   });
 };

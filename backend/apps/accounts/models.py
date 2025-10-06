@@ -14,6 +14,13 @@ class User(AbstractUser):
     email_verified = models.BooleanField(default=False)
     verification_token = models.CharField(max_length=64, blank=True, null=True)
     verification_token_created = models.DateTimeField(blank=True, null=True)
+    # Password reset
+    password_reset_token = models.CharField(max_length=64, blank=True, null=True)
+    password_reset_token_created = models.DateTimeField(blank=True, null=True)
+    # Failed login tracking
+    failed_login_attempts = models.IntegerField(default=0)
+    last_failed_login = models.DateTimeField(blank=True, null=True)
+    account_locked_until = models.DateTimeField(blank=True, null=True)
 
     class UserType(models.TextChoices):
         FREELANCER = "freelancer", _("Freelancer")

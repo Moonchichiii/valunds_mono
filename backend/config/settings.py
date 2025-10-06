@@ -73,6 +73,10 @@ MIDDLEWARE = [
 RATELIMIT_ENABLE = not DEBUG
 RATELIMIT_USE_CACHE = "default"
 
+# In prodX-Forwarded-For for rate limiting
+if not DEBUG:
+    RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR'
+
 # Auth
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = [

@@ -48,6 +48,10 @@ const Dashboard: React.FC = () => {
     void navigate({ to: "/login" });
   }, [navigate]);
 
+  const handleSettingsClick = useCallback(() => {
+    void navigate({ to: "/settings" });
+  }, [navigate]);
+
   const handleBrowseProjects = useCallback(() => {
     // Navigate to projects page when implemented
     // eslint-disable-next-line no-console
@@ -249,6 +253,7 @@ const Dashboard: React.FC = () => {
               </button>
 
               <button
+                onClick={handleSettingsClick}
                 className="w-10 h-10 bg-[#ffffff] border border-[#e8e6e3] rounded-2xl flex items-center justify-center text-[#666666] hover:text-[#1a1a1a] transition-colors"
                 title="Settings"
                 type="button"
