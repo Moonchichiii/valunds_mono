@@ -1,10 +1,12 @@
 ﻿import { usePasswordStrength, useRegister } from "@/features/accounts/api/auth";
+import { GoogleOAuthButton } from "@/features/accounts/components/GoogleOAuthButton";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 
 interface FormData {
   firstName: string;
@@ -58,6 +60,7 @@ export const RegisterPage = (): React.JSX.Element => {
 
   const registerMutation = useRegister();
   const passwordStrength = usePasswordStrength(formData.password);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
@@ -111,7 +114,7 @@ export const RegisterPage = (): React.JSX.Element => {
   }, [formData, passwordStrength]);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent): void => {
+    async (e: React.FormEvent): Promise<void> => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -120,6 +123,12 @@ export const RegisterPage = (): React.JSX.Element => {
       }
 
       if (!validateForm()) return;
+
+      // ✅ Get reCAPTCHA token
+      let recaptchaToken = "";
+      if (executeRecaptcha) {
+        recaptchaToken = await executeRecaptcha("register");
+      }
 
       isSubmittingRef.current = true;
 
@@ -141,6 +150,7 @@ export const RegisterPage = (): React.JSX.Element => {
           privacy_policy_accepted: true,
           marketing_consent: false,
           analytics_consent: false,
+          recaptcha_token: recaptchaToken,
         },
         {
           onSuccess: () => {
@@ -158,7 +168,7 @@ export const RegisterPage = (): React.JSX.Element => {
         }
       );
     },
-    [formData, registerMutation, navigate, validateForm]
+    [formData, registerMutation, navigate, validateForm, executeRecaptcha]
   );
 
   const handleInputChange = useCallback(
@@ -183,6 +193,7 @@ export const RegisterPage = (): React.JSX.Element => {
   return (
     <div className="min-h-screen bg-nordic-cream flex items-center justify-center py-12 px-4">
       <div className="max-w-2xl w-full space-y-8">
+        {/* Back button */}
         <div className="flex items-center">
           <Link
             to="/"
@@ -193,6 +204,7 @@ export const RegisterPage = (): React.JSX.Element => {
           </Link>
         </div>
 
+        {/* Title */}
         <div className="text-center">
           <Link to="/" className="text-3xl font-bold text-accent-primary">
             Valunds
@@ -201,6 +213,28 @@ export const RegisterPage = (): React.JSX.Element => {
             Join the community
           </h2>
         </div>
+
+        {/* ✅ OAuth FIRST - More visible on mobile */}
+        <Card className="bg-nordic-white">
+          <div className="space-y-4">
+            <h3 className="text-center text-sm font-medium text-text-secondary">
+              Quick sign up with
+            </h3>
+            <GoogleOAuthButton text="Continue with Google" />
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border-light" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-nordic-white text-text-muted">
+                  Or register with email
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* User Type Selection */}
         <Card className="bg-nordic-white">
@@ -441,6 +475,7 @@ export const RegisterPage = (): React.JSX.Element => {
             </Button>
           </form>
 
+          {/* Sign in link - ONLY ONCE */}
           <div className="mt-6 text-center">
             <p className="text-text-secondary">
               Already have an account?{" "}

@@ -20,6 +20,7 @@ export interface Tokens {
 export interface LoginRequest {
   email: string;
   password: string;
+  recaptcha_token?: string;
 }
 
 export interface RegisterRequest {
@@ -39,6 +40,7 @@ export interface RegisterRequest {
   privacy_policy_accepted?: boolean;
   marketing_consent?: boolean;
   analytics_consent?: boolean;
+  recaptcha_token?: string;
 }
 
 export interface AuthResponse {

@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -28,9 +29,10 @@ from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
+# Utilities -------------------------------------------------------------------
 
 def set_auth_cookies(response, tokens):
-    """Set JWT tokens in HttpOnly cookies"""
+    """Set JWT tokens in HttpOnly cookies."""
     response.set_cookie(
         key="refresh_token",
         value=tokens["refresh"],
@@ -43,16 +45,34 @@ def set_auth_cookies(response, tokens):
 
 
 def clear_auth_cookies(response):
-    """Clear authentication cookies"""
+    """Clear authentication cookies."""
     response.delete_cookie("refresh_token")
     return response
 
 
+
+
+# Authentication Views --------------------------------------------------------
+
 @method_decorator(ratelimit(key="ip", rate="3/h", method="POST"), name="dispatch")
 class RegisterView(APIView):
+    """User registration with reCAPTCHA (rate-limited)."""
     permission_classes = [AllowAny]
 
     def post(self, request):
+        # Verify reCAPTCHA
+        recaptcha_token = request.data.get("recaptcha_token")
+        is_valid, score = verify_recaptcha(recaptcha_token, action="register")
+
+        if not is_valid or score < 0.5:
+            return Response(
+                {
+                    "detail": "reCAPTCHA verification failed. Please try again.",
+                    "code": "recaptcha_failed",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -64,9 +84,9 @@ class RegisterView(APIView):
 
         verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email/{token}"
 
-        html_message = render_to_string('accounts/verify_email.html', {
-            'user': user,
-            'verification_url': verification_url,
+        html_message = render_to_string("accounts/verify_email.html", {
+            "user": user,
+            "verification_url": verification_url,
         })
         plain_message = strip_tags(html_message)
 
@@ -89,10 +109,7 @@ class RegisterView(APIView):
 
 @method_decorator(ratelimit(key='ip', rate='5/15m', method='POST'), name='dispatch')
 class LoginView(APIView):
-    """
-    Rate limited to 5 attempts per 15 minutes per IP address.
-    Also tracks failed/successful login attempts and notifies on new device.
-    """
+    """Email/password login with adaptive reCAPTCHA and device tracking."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -102,118 +119,107 @@ class LoginView(APIView):
         email = serializer.validated_data["email"]
         password = serializer.validated_data["password"]
 
-        # Check if account exists and is locked
+        # Pre-auth checks: reCAPTCHA trigger and lock handling
         try:
             user = User.objects.get(email=email)
 
-            # Check if account is locked
+            if getattr(user, "failed_login_attempts", 0) >= 2:
+                recaptcha_token = request.data.get("recaptcha_token")
+                is_valid, score = verify_recaptcha(recaptcha_token, action="login")
+
+                if not is_valid or score < 0.5:
+                    return Response(
+                        {
+                            "detail": "reCAPTCHA verification required after multiple failed attempts.",
+                            "code": "recaptcha_required",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
             if user.account_locked_until and timezone.now() < user.account_locked_until:
                 time_remaining = (user.account_locked_until - timezone.now()).total_seconds() / 60
                 return Response(
                     {
                         "detail": f"Account temporarily locked due to too many failed login attempts. Try again in {int(time_remaining)} minutes.",
                         "code": "account_locked",
-                        "locked_until": user.account_locked_until.isoformat()
+                        "locked_until": user.account_locked_until.isoformat(),
                     },
-                    status=status.HTTP_403_FORBIDDEN
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # Reset lock if time has passed
             if user.account_locked_until and timezone.now() >= user.account_locked_until:
                 user.account_locked_until = None
                 user.failed_login_attempts = 0
-                user.save(update_fields=['account_locked_until', 'failed_login_attempts'])
+                user.save(update_fields=["account_locked_until", "failed_login_attempts"])
 
         except User.DoesNotExist:
-            # Don't reveal that user doesn't exist - still authenticate to prevent timing attacks
             pass
 
         # Authenticate
-        user = authenticate(
-            username=email,
-            password=password,
-        )
+        user = authenticate(username=email, password=password)
 
         if not user:
-            # If user exists, record failed attempt with IP/device
             try:
                 failed_user = User.objects.get(email=email)
                 track_login_attempt(failed_user, request, success=False)
             except User.DoesNotExist:
                 pass
-            # Failed login - track attempt
-            self._handle_failed_login(email)
-            return Response(
-                {"detail": "Invalid credentials"},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
 
-        # Check if email is verified
+            self._handle_failed_login(email)
+            return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
         if not user.email_verified:
             return Response(
                 {
                     "detail": "Email not verified. Please check your email for the verification link.",
                     "code": "email_not_verified",
-                    "email": user.email
+                    "email": user.email,
                 },
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Successful login - reset failed attempts
-        if user.failed_login_attempts > 0 or user.last_failed_login:
+        if getattr(user, "failed_login_attempts", 0) > 0 or getattr(user, "last_failed_login", None):
             user.failed_login_attempts = 0
             user.last_failed_login = None
-            user.save(update_fields=['failed_login_attempts', 'last_failed_login'])
+            user.save(update_fields=["failed_login_attempts", "last_failed_login"])
 
-        # Record successful login with IP/device and notify if new device
         login_history = track_login_attempt(user, request, success=True)
         if login_history:
             check_and_notify_new_device(user, login_history)
 
         refresh = RefreshToken.for_user(user)
-        tokens = {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-        }
+        tokens = {"refresh": str(refresh), "access": str(refresh.access_token)}
 
-        response = Response({
-            "user": UserSerializer(user).data,
-            "tokens": tokens,
-        })
+        response = Response({"user": UserSerializer(user).data, "tokens": tokens})
 
         return set_auth_cookies(response, tokens)
 
     def _handle_failed_login(self, email):
-        """Track failed login attempts and lock account if needed"""
+        """Increment failed attempts and lock account if threshold reached."""
         try:
             user = User.objects.get(email=email)
 
-            # Reset counter if last failure was more than 15 minutes ago
             if user.last_failed_login and (timezone.now() - user.last_failed_login).total_seconds() > 900:
                 user.failed_login_attempts = 0
 
             user.failed_login_attempts += 1
             user.last_failed_login = timezone.now()
 
-            # Lock account after 5 failed attempts
             if user.failed_login_attempts >= 5:
                 user.account_locked_until = timezone.now() + timedelta(minutes=15)
-                user.save(update_fields=['failed_login_attempts', 'last_failed_login', 'account_locked_until'])
-
-                # Send security alert email
+                user.save(update_fields=["failed_login_attempts", "last_failed_login", "account_locked_until"])
                 self._send_lockout_notification(user)
             else:
-                user.save(update_fields=['failed_login_attempts', 'last_failed_login'])
+                user.save(update_fields=["failed_login_attempts", "last_failed_login"])
 
         except User.DoesNotExist:
-            # Don't reveal user doesn't exist
             pass
 
     def _send_lockout_notification(self, user):
-        """Send email notification when account is locked"""
-        html_message = render_to_string('accounts/account_locked.html', {
-            'user': user,
-            'locked_until': user.account_locked_until,
+        """Notify user when account is locked."""
+        html_message = render_to_string("accounts/account_locked.html", {
+            "user": user,
+            "locked_until": user.account_locked_until
         })
         plain_message = strip_tags(html_message)
 
@@ -227,6 +233,7 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    """Logout by blacklisting refresh token."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -244,10 +251,7 @@ class LogoutView(APIView):
 
 @method_decorator(ratelimit(key='ip', rate='10/15m', method='POST'), name='dispatch')
 class RefreshTokenView(APIView):
-    """
-    Refresh access token and rotate refresh token.
-    Rate limited to 10 attempts per 15 minutes per IP.
-    """
+    """Refresh access token and rotate refresh token (rate-limited)."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -280,13 +284,16 @@ class RefreshTokenView(APIView):
 
 
 class MeView(APIView):
+    """Return current authenticated user."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
 
+@method_decorator(ratelimit(key='ip', rate='5/h', method='POST'), name='dispatch')
 class VerifyEmailView(APIView):
+    """Verify email token (rate-limited)."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -324,7 +331,10 @@ class VerifyEmailView(APIView):
             status=status.HTTP_200_OK,
         )
         return set_auth_cookies(response, tokens)
+
+
 class UpdateProfileView(APIView):
+    """Update current user's profile."""
     permission_classes = [IsAuthenticated]
 
     def patch(self, request):
@@ -335,6 +345,7 @@ class UpdateProfileView(APIView):
 
 
 class ChangePasswordView(APIView):
+    """Change password for authenticated user."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -347,23 +358,18 @@ class ChangePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate strength
         try:
             validate_password(new, request.user)
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Capture IP for audit
         ip_address = get_client_ip(request)
 
-        # Change password
         request.user.set_password(new)
         request.user.save()
 
-        # Security email + event log
         send_password_change_notification(request.user, ip_address)
 
-        # Invalidate all sessions except current
         refresh = RefreshToken.for_user(request.user)
 
         response = Response({"detail": "Password changed successfully"})
@@ -374,6 +380,7 @@ class ChangePasswordView(APIView):
 
 
 class ChangeEmailView(APIView):
+    """Request email change and verify new address."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -389,7 +396,6 @@ class ChangeEmailView(APIView):
             )
 
         old_email = request.user.email
-        # Generate new verification token
         token = get_random_string(64)
         request.user.email = new_email
         request.user.email_verified = False
@@ -397,10 +403,8 @@ class ChangeEmailView(APIView):
         request.user.verification_token_created = timezone.now()
         request.user.save()
 
-        # Security notice to OLD email
         send_email_change_notification(request.user, old_email, new_email)
 
-        # Verification email to NEW address
         verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email/{token}"
         html_message = render_to_string('accounts/verify_email.html', {
             'user': request.user,
@@ -419,6 +423,7 @@ class ChangeEmailView(APIView):
 
 
 class DeleteAccountView(APIView):
+    """Soft-delete the authenticated user's account."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -430,22 +435,16 @@ class DeleteAccountView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Soft delete or hard delete - your choice
         request.user.is_active = False  # Soft delete
         request.user.save()
-        # Or: request.user.delete()  # Hard delete
 
         response = Response({"detail": "Account deleted"})
         return clear_auth_cookies(response)
 
-# backend/apps/accounts/views.py
 
 @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'), name='dispatch')
 class RequestPasswordResetView(APIView):
-    """
-    Request password reset email.
-    Rate limited to 3 attempts per hour per IP.
-    """
+    """Request password reset email (rate-limited)."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -460,13 +459,11 @@ class RequestPasswordResetView(APIView):
         try:
             user = User.objects.get(email=email)
 
-            # Generate reset token
             token = get_random_string(64)
             user.password_reset_token = token
             user.password_reset_token_created = timezone.now()
             user.save(update_fields=['password_reset_token', 'password_reset_token_created'])
 
-            # Send reset email
             reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password/{token}"
 
             html_message = render_to_string('accounts/reset_password_email.html', {
@@ -483,21 +480,18 @@ class RequestPasswordResetView(APIView):
                 html_message=html_message,
             )
 
-            # Send security notification to existing email
             self._send_security_notification(user)
 
         except User.DoesNotExist:
-            # Don't reveal if email exists (security best practice)
             pass
 
-        # Always return success to prevent email enumeration
         return Response(
             {"detail": "If an account exists with this email, you will receive password reset instructions."},
             status=status.HTTP_200_OK
         )
 
     def _send_security_notification(self, user):
-        """Notify user that password reset was requested"""
+        """Notify user that a password reset was requested."""
         html_message = render_to_string('accounts/password_reset_notification.html', {
             'user': user,
         })
@@ -514,10 +508,7 @@ class RequestPasswordResetView(APIView):
 
 @method_decorator(ratelimit(key='ip', rate='5/h', method='POST'), name='dispatch')
 class ResetPasswordView(APIView):
-    """
-    Reset password with valid token.
-    Rate limited to 5 attempts per hour per IP.
-    """
+    """Reset password using token (rate-limited)."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -538,7 +529,6 @@ class ResetPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check token expiry (1 hour)
         if not user.password_reset_token_created or (
             timezone.now() - user.password_reset_token_created > timedelta(hours=1)
         ):
@@ -547,7 +537,6 @@ class ResetPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate password strength
         try:
             validate_password(new_password, user)
         except Exception as e:
@@ -556,18 +545,15 @@ class ResetPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Capture IP for audit
         ip_address = get_client_ip(request)
 
-        # Update password and clear reset token
         user.set_password(new_password)
         user.password_reset_token = None
         user.password_reset_token_created = None
-        user.failed_login_attempts = 0  # Reset failed attempts
-        user.account_locked_until = None  # Unlock account if locked
+        user.failed_login_attempts = 0
+        user.account_locked_until = None
         user.save()
 
-        # Unified password-change notification + SecurityEvent log
         send_password_change_notification(user, ip_address)
 
         return Response(
@@ -578,10 +564,7 @@ class ResetPasswordView(APIView):
 
 @method_decorator(ratelimit(key='ip', rate='3/h', method='POST'), name='dispatch')
 class ResendVerificationView(APIView):
-    """
-    Resend email verification link.
-    Rate limited to 3 attempts per hour per IP.
-    """
+    """Resend email verification link (rate-limited)."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -596,20 +579,17 @@ class ResendVerificationView(APIView):
         try:
             user = User.objects.get(email=email)
 
-            # Check if already verified
             if user.email_verified:
                 return Response(
                     {"detail": "Email already verified. Please log in."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Generate new verification token
             token = get_random_string(64)
             user.verification_token = token
             user.verification_token_created = timezone.now()
             user.save(update_fields=['verification_token', 'verification_token_created'])
 
-            # Send verification email
             verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email/{token}"
 
             html_message = render_to_string('accounts/verify_email.html', {
@@ -627,11 +607,42 @@ class ResendVerificationView(APIView):
             )
 
         except User.DoesNotExist:
-            # Don't reveal if email exists (security best practice)
             pass
 
-        # Always return success to prevent email enumeration
         return Response(
             {"detail": "If an unverified account exists with this email, a new verification link has been sent."},
             status=status.HTTP_200_OK
         )
+
+
+def verify_recaptcha(token: str, action: str = None) -> tuple[bool, float]:
+    """Verify reCAPTCHA v3 token; returns (is_valid, score)."""
+    if not token:
+        return False, 0.0
+
+    try:
+        response = requests.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data={
+                'secret': settings.RECAPTCHA_PRIVATE_KEY,
+                'response': token,
+            },
+            timeout=5
+        )
+
+        result = response.json()
+
+        if not result.get('success'):
+            return False, 0.0
+
+        score = result.get('score', 0.0)
+
+        if action and result.get('action') != action:
+            return False, 0.0
+
+        return True, score
+
+    except Exception as e:
+        print(f"reCAPTCHA verification error: {e}")
+        # Graceful degradation on verification service failure
+        return True, 1.0

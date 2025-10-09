@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 import { Toaster } from "react-hot-toast";
 import App from "./App";
 
@@ -47,6 +48,8 @@ const queryClient = new QueryClient({
   },
 });
 
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "";
+
 const container = document.getElementById("root");
 if (!container) {
   throw new Error("Root element not found");
@@ -57,26 +60,36 @@ const root = createRoot(container);
 root.render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          className: "nordic-toast",
-          style: {
-            background: "#f7f6f4",
-            color: "#1a1a1a",
-            border: "1px solid #e8e6e3",
-          },
+      <GoogleReCaptchaProvider
+        reCaptchaKey={RECAPTCHA_SITE_KEY}
+        language="en"
+        scriptProps={{
+          async: true,
+          defer: true,
+          appendTo: "head",
         }}
-      />
-      {import.meta.env.DEV && (
-        <ReactQueryDevtools
-          initialIsOpen={false}
-          position="bottom"
-          buttonPosition="bottom-right"
+      >
+        <App />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            className: "nordic-toast",
+            style: {
+              background: "#f7f6f4",
+              color: "#1a1a1a",
+              border: "1px solid #e8e6e3",
+            },
+          }}
         />
-      )}
+        {import.meta.env.DEV && (
+          <ReactQueryDevtools
+            initialIsOpen={false}
+            position="bottom"
+            buttonPosition="bottom-right"
+          />
+        )}
+      </GoogleReCaptchaProvider>
     </QueryClientProvider>
   </StrictMode>
 );

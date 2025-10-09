@@ -27,6 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
+    recaptcha_token = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = User
@@ -42,6 +43,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             "city",
             "postcode",
             "country",
+            "recaptcha_token",
         ]
         extra_kwargs = {
             "phone_number": {"required": True},
@@ -53,7 +55,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password": "Passwords do not match"})
-        attrs.pop("password_confirm")
+
+        attrs.pop("password_confirm", None)
+        attrs.pop("recaptcha_token", None)
+
         return attrs
 
     def validate_phone_number(self, value):
@@ -75,3 +80,4 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+    recaptcha_token = serializers.CharField(write_only=True, required=False)

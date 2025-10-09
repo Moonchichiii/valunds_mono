@@ -1,5 +1,10 @@
 from django.urls import include, path
 
+from .bankid_views import (
+    BankIDCancelView,
+    BankIDCollectView,
+    BankIDInitiateView,
+)
 from .oauth_views import GoogleLoginCallbackView, GoogleLoginInitiateView
 from .views import (
     ChangeEmailView,
@@ -36,4 +41,8 @@ urlpatterns = [
     path('oauth/', include('allauth.socialaccount.urls')),
     path('oauth/google/callback/', GoogleLoginCallbackView.as_view(), name='google-callback'),
     path('oauth/google/initiate/', GoogleLoginInitiateView.as_view(), name='google-initiate'),
+    path("oauth/post-login/", GoogleLoginCallbackView.as_view(), name="google-post-login"),
+    path('bankid/initiate/', BankIDInitiateView.as_view(), name='bankid-initiate'),
+    path('bankid/collect/', BankIDCollectView.as_view(), name='bankid-collect'),
+    path('bankid/cancel/', BankIDCancelView.as_view(), name='bankid-cancel'),
 ]
