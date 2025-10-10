@@ -21,7 +21,7 @@ from .models import User
 from .security_utils import get_client_ip, track_login_attempt
 from .views import set_auth_cookies
 
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 class BankIDInitiateView(APIView):

@@ -6,28 +6,23 @@ from django.utils.translation import gettext_lazy as _
 
 
 class User(AbstractUser):
-    """Custom user model with UUID primary key and extended profile fields"""
+    """Custom user with UUID primary key and profile/security fields."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(_("email address"), unique=True)
 
-    # Email verification
     email_verified = models.BooleanField(default=False)
     verification_token = models.CharField(max_length=64, blank=True, null=True)
     verification_token_created = models.DateTimeField(blank=True, null=True)
 
-    # Password reset
     password_reset_token = models.CharField(max_length=64, blank=True, null=True)
     password_reset_token_created = models.DateTimeField(blank=True, null=True)
 
-    # Failed login tracking
     failed_login_attempts = models.IntegerField(default=0)
     last_failed_login = models.DateTimeField(blank=True, null=True)
     account_locked_until = models.DateTimeField(blank=True, null=True)
 
-    # Login tracking (no GeoIP needed)
     last_login_ip = models.GenericIPAddressField(blank=True, null=True, help_text="IPv4/IPv6")
     last_login_user_agent = models.CharField(max_length=512, blank=True)
-    # Keep this even if you don’t fill it yet—safe to leave empty
     last_login_location = models.CharField(max_length=255, blank=True, help_text="City, Country")
 
     class UserType(models.TextChoices):
@@ -45,6 +40,17 @@ class User(AbstractUser):
     postcode = models.CharField(_("postal code"), max_length=20, blank=True)
     country = models.CharField(_("country"), max_length=100, blank=True, default="Sweden")
 
+    # Swedish BankID fields
+    bankid_verified = models.BooleanField(default=False)
+    bankid_personal_number = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="Hashed Swedish personnummer (never store raw)"
+    )
+    bankid_verified_at = models.DateTimeField(blank=True, null=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
@@ -55,7 +61,8 @@ class User(AbstractUser):
             models.Index(fields=["user_type"]),
             models.Index(fields=["verification_token"]),
             models.Index(fields=["city"]),
-            models.Index(fields=["last_login_ip"]),  # handy for security searches
+            models.Index(fields=["last_login_ip"]),
+            models.Index(fields=["bankid_personal_number"]),
         ]
 
     def __str__(self):
@@ -68,24 +75,20 @@ class User(AbstractUser):
 
 
 class LoginHistory(models.Model):
-    """Track all login attempts for security monitoring"""
+    """Record of login attempts."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_history')
 
-    # Login details
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     ip_address = models.GenericIPAddressField()
     user_agent = models.CharField(max_length=512)
 
-    # Parsed device info
-    device_type = models.CharField(max_length=50, blank=True)  # Desktop, Mobile, Tablet
+    device_type = models.CharField(max_length=50, blank=True)
     browser = models.CharField(max_length=100, blank=True)
     os = models.CharField(max_length=100, blank=True)
 
-    # Optional location (leave empty if no GeoIP)
     location = models.CharField(max_length=255, blank=True, help_text="City, Country")
 
-    # Status
     success = models.BooleanField(default=True)
     flagged_as_suspicious = models.BooleanField(default=False)
     notification_sent = models.BooleanField(default=False)
@@ -104,7 +107,7 @@ class LoginHistory(models.Model):
 
 
 class SecurityEvent(models.Model):
-    """Track security-related events for audit trail"""
+    """Audit trail of security-related events."""
     class EventType(models.TextChoices):
         PASSWORD_CHANGED = "password_changed", _("Password Changed")
         EMAIL_CHANGED = "email_changed", _("Email Changed")
@@ -118,7 +121,6 @@ class SecurityEvent(models.Model):
     event_type = models.CharField(max_length=30, choices=EventType.choices)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    # Event details
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     user_agent = models.CharField(max_length=512, blank=True)
     details = models.JSONField(default=dict, blank=True)

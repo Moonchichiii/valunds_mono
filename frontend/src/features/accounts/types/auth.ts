@@ -10,6 +10,7 @@
   city?: string;
   postcode?: string;
   country?: string;
+  bankid_verified?: boolean;
 }
 
 export interface Tokens {

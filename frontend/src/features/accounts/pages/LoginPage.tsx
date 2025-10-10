@@ -1,4 +1,5 @@
 ﻿import { useLogin, useResendVerification } from "@/features/accounts/api/auth";
+import { BankIDButton } from "@/features/accounts/components/BankIDButton";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
@@ -329,7 +330,7 @@ export const LoginPage: FC = () => {
               Continue with Google
             </span>
           </button>
-
+          <BankIDButton />
           {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-text-secondary">

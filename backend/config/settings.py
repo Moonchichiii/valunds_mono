@@ -1,13 +1,16 @@
 ﻿"""
 Production-ready Django settings with python-decouple.
 Toggle DEBUG to switch between dev/prod.
+
+Settings are organized in logical groups for easy maintenance.
 """
 from datetime import timedelta
 from pathlib import Path
 
 from decouple import Csv, config
 
-# Core
+# CORE DJANGO SETTINGS
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -16,15 +19,22 @@ ROOT_URLCONF = "backend.config.urls"
 WSGI_APPLICATION = "backend.config.wsgi.application"
 SITE_ID = 1
 
-# Project URLs & Email
-# Frontend base URL is used for building links (e.g., email verification) and for CORS/CSRF defaults in dev.
+# Project URLs
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="kontakt@valunds.se")
-# Keep Django's server-originated emails consistent
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
-# Apps
+# Internationalization
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_TZ = True
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# INSTALLED APPS & MIDDLEWARE
+
 INSTALLED_APPS = [
+    # Django core
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -45,7 +55,6 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "django_prometheus",
-    'django_recaptcha',
     # Local apps
     "backend.apps.accounts",
     "backend.apps.competence",
@@ -57,7 +66,6 @@ INSTALLED_APPS = [
     "backend.apps.search",
 ]
 
-# Middleware
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -72,60 +80,8 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
-RECAPTCHA_PUBLIC_KEY = config('RECAPTCHA_PUBLIC_KEY')
-RECAPTCHA_PRIVATE_KEY = config('RECAPTCHA_PRIVATE_KEY')
-RECAPTCHA_REQUIRED_SCORE = 0.5
+# TEMPLATES
 
-RATELIMIT_ENABLE = not DEBUG
-RATELIMIT_USE_CACHE = "default"
-
-# In prodX-Forwarded-For for rate limiting
-if not DEBUG:
-    RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR'
-
-# Auth
-AUTH_USER_MODEL = "accounts.User"
-AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
-    "allauth.account.auth_backends.AuthenticationBackend",
-]
-
-
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
-SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
-SOCIALACCOUNT_AUTO_SIGNUP = True
-
-LOGIN_REDIRECT_URL = '/api/accounts/oauth/post-login/'
-ACCOUNT_LOGOUT_REDIRECT_URL = '/'
-
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': ['openid', 'email', 'profile'],
-        'AUTH_PARAMS': {
-            'access_type': 'online',
-        },
-        'APP': {
-            'client_id': config('GOOGLE_OAUTH_CLIENT_ID', default=''),
-            'secret': config('GOOGLE_OAUTH_CLIENT_SECRET', default=''),
-            'key': ''
-        }
-    }
-}
-
-# Password validation
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-    {"NAME": "backend.apps.accounts.validators.UppercaseValidator"},
-    {"NAME": "backend.apps.accounts.validators.SpecialCharacterValidator"},
-] if not DEBUG else []
-
-# Templates
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -142,7 +98,16 @@ TEMPLATES = [
     },
 ]
 
-# Database
+# DATABASE CONFIGURATION
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
+}
+
+# Production PostgreSQL (commented for dev)
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django.db.backends.postgresql",
@@ -153,20 +118,13 @@ TEMPLATES = [
 #         "PORT": config("DB_PORT", default="5432"),
 #         "CONN_MAX_AGE": 600,
 #     }
-# } if not DEBUG else {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
 # }
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
-# Redis & Cache
+
+
+# CACHE & REDIS
+
 REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/0")
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -179,7 +137,9 @@ CACHES = {
     }
 }
 
-# Celery
+
+# CELERY CONFIGURATION
+
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL.replace("/0", "/1"))
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_CACHE_BACKEND = "django-cache"
@@ -187,7 +147,56 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 
-# REST Framework
+# AUTHENTICATION & USER MODEL
+
+AUTH_USER_MODEL = "accounts.User"
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "backend.apps.accounts.validators.UppercaseValidator"},
+    {"NAME": "backend.apps.accounts.validators.SpecialCharacterValidator"},
+] if not DEBUG else []
+
+# DJANGO ALLAUTH CONFIGURATION
+
+# Django Allauth settings
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+LOGIN_REDIRECT_URL = '/api/accounts/oauth/post-login/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+# Google OAuth provider
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['openid', 'email', 'profile'],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'APP': {
+            'client_id': config('GOOGLE_OAUTH_CLIENT_ID', default=''),
+            'secret': config('GOOGLE_OAUTH_CLIENT_SECRET', default=''),
+            'key': ''
+        }
+    }
+}
+
+# REST FRAMEWORK & JWT
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -203,7 +212,6 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
-# JWT
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
@@ -214,18 +222,18 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# CORS
+# CORS & CSRF CONFIGURATION
+
 CORS_ALLOW_CREDENTIALS = True
+
 if DEBUG:
     CORS_ALLOWED_ORIGINS = [
         FRONTEND_URL,
         "http://127.0.0.1:5173",
     ]
 else:
-    # Production: same-origin (NGINX serves both)
     CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
 
-# CSRF
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
     default=f"{FRONTEND_URL},http://127.0.0.1:5173" if DEBUG else FRONTEND_URL,
@@ -235,7 +243,14 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = "Lax"
 
-# Security (production)
+# SECURITY SETTINGS
+
+# Always enabled security headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# Production-only security
 if not DEBUG:
     # Proxy headers (for NGINX)
     USE_X_FORWARDED_HOST = True
@@ -249,32 +264,22 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = "DENY"
+# RATE LIMITING
 
-# Static/Media
+RATELIMIT_ENABLE = not DEBUG
+RATELIMIT_USE_CACHE = "default"
+
+if not DEBUG:
+    RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR'
+
+# STATIC & MEDIA FILES
+
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Internationalization
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
-USE_I18N = True
-USE_TZ = True
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# Email
-# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend"
-# if not DEBUG:
-#     EMAIL_HOST = config("EMAIL_HOST")
-#     EMAIL_PORT = config("EMAIL_PORT", default=465, cast=int)
-#     EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=True, cast=bool)
-#     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-#     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+# EMAIL CONFIGURATION
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config("EMAIL_HOST")
@@ -283,7 +288,49 @@ EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=True, cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 
-# Monitoring
+# THIRD-PARTY SERVICES
+# Google reCAPTCHA
+# -----------------------------
+RECAPTCHA_PUBLIC_KEY = config('RECAPTCHA_PUBLIC_KEY')
+RECAPTCHA_PRIVATE_KEY = config('RECAPTCHA_PRIVATE_KEY')
+RECAPTCHA_REQUIRED_SCORE = 0.5
+
+# 🇸🇪 BankID
+# -----------------------------
+BANKID_API_URL = config(
+    'BANKID_API_URL',
+    default='https://appapi2.test.bankid.com/rp/v6.0'
+)
+
+# Certificate paths - configurable via .env, secure defaults provided
+BANKID_CERT_PATH = Path(
+    config(
+        'BANKID_CERT_PATH',
+        default=str(BASE_DIR / 'secrets' / 'bankid' / 'test_cert.pem')
+    )
+)
+
+BANKID_KEY_PATH = Path(
+    config(
+        'BANKID_KEY_PATH',
+        default=str(BASE_DIR / 'secrets' / 'bankid' / 'test_key.pem')
+    )
+)
+
+BANKID_CA_CERT_PATH = Path(
+    config(
+        'BANKID_CA_CERT_PATH',
+        default=str(BASE_DIR / 'secrets' / 'bankid' / 'bankid_ca.pem')
+    )
+)
+
+# Salt for hashing personnummer (GDPR compliance)
+BANKID_SALT = config(
+    'BANKID_SALT',
+    default='change-in-production-random-salt'
+)
+
+# Sentry Monitoring
 SENTRY_DSN = config("SENTRY_DSN", default="")
 if SENTRY_DSN and not DEBUG:
     import sentry_sdk
