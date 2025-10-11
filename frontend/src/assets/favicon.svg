@@ -1,8 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Valunds V rune mark">
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     width="256"
+     height="256"
+     role="img"
+     aria-label="Valunds V rune mark"
+     shape-rendering="geometricPrecision">
   <style>
-    :root {
-      --color-accent-primary: #2c3e50;
-    }
+    :root { --color-accent-primary: #2c3e50; }
     .glyph { fill: var(--color-accent-primary); }
   </style>
   <path class="glyph" d="M8 6h16l8 30 8-30h16L35 58h-6z"/>

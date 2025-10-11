@@ -297,31 +297,11 @@ RECAPTCHA_REQUIRED_SCORE = 0.5
 
 # 🇸🇪 BankID
 # -----------------------------
+# 🇸🇪 BankID
+# -----------------------------
 BANKID_API_URL = config(
     'BANKID_API_URL',
     default='https://appapi2.test.bankid.com/rp/v6.0'
-)
-
-# Certificate paths - configurable via .env, secure defaults provided
-BANKID_CERT_PATH = Path(
-    config(
-        'BANKID_CERT_PATH',
-        default=str(BASE_DIR / 'secrets' / 'bankid' / 'test_cert.pem')
-    )
-)
-
-BANKID_KEY_PATH = Path(
-    config(
-        'BANKID_KEY_PATH',
-        default=str(BASE_DIR / 'secrets' / 'bankid' / 'test_key.pem')
-    )
-)
-
-BANKID_CA_CERT_PATH = Path(
-    config(
-        'BANKID_CA_CERT_PATH',
-        default=str(BASE_DIR / 'secrets' / 'bankid' / 'bankid_ca.pem')
-    )
 )
 
 # Salt for hashing personnummer (GDPR compliance)
@@ -329,6 +309,54 @@ BANKID_SALT = config(
     'BANKID_SALT',
     default='change-in-production-random-salt'
 )
+
+# ✅ Certificate paths - resolve relative paths against BASE_DIR
+def _resolve_bankid_path(env_var: str, default_relative: str) -> str:
+    """
+    Resolve BankID certificate path from environment variable.
+    If the path is relative, join it with BASE_DIR.
+    Always returns an absolute path as a string.
+    """
+    from pathlib import Path
+
+    path_str = config(env_var, default=default_relative)
+    path_obj = Path(path_str)
+
+    # If already absolute, return as string
+    if path_obj.is_absolute():
+        return str(path_obj)
+
+    # If relative, join with BASE_DIR
+    return str(BASE_DIR / path_obj)
+
+BANKID_CERT_PATH = _resolve_bankid_path(
+    'BANKID_CERT_PATH',
+    'backend/secrets/bankid/test_cert.pem'
+)
+
+BANKID_KEY_PATH = _resolve_bankid_path(
+    'BANKID_KEY_PATH',
+    'backend/secrets/bankid/test_key.pem'
+)
+
+BANKID_CA_CERT_PATH = _resolve_bankid_path(
+    'BANKID_CA_CERT_PATH',
+    'backend/secrets/bankid/bankid_ca.pem'
+)
+
+# ✅ Debug: Print resolved paths (remove after verification)
+if DEBUG:
+    print("\n" + "="*60)
+    print("🇸🇪 BankID Configuration:")
+    print("="*60)
+    print(f"API URL: {BANKID_API_URL}")
+    print(f"Cert Path: {BANKID_CERT_PATH}")
+    print(f"Cert Exists: {Path(BANKID_CERT_PATH).exists()}")
+    print(f"Key Path: {BANKID_KEY_PATH}")
+    print(f"Key Exists: {Path(BANKID_KEY_PATH).exists()}")
+    print(f"CA Path: {BANKID_CA_CERT_PATH}")
+    print(f"CA Exists: {Path(BANKID_CA_CERT_PATH).exists()}")
+    print("="*60 + "\n")
 
 # Sentry Monitoring
 SENTRY_DSN = config("SENTRY_DSN", default="")

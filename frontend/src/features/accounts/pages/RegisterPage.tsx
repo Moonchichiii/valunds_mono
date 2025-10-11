@@ -1,4 +1,5 @@
 ﻿import { usePasswordStrength, useRegister } from "@/features/accounts/api/auth";
+import { BankIDButton } from "@/features/accounts/components/BankIDButton";
 import { GoogleOAuthButton } from "@/features/accounts/components/GoogleOAuthButton";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
@@ -214,13 +215,18 @@ export const RegisterPage = (): React.JSX.Element => {
           </h2>
         </div>
 
-        {/* ✅ OAuth FIRST - More visible on mobile */}
+        {/* OAuth Options - More visible on mobile */}
         <Card className="bg-nordic-white">
           <div className="space-y-4">
             <h3 className="text-center text-sm font-medium text-text-secondary">
               Quick sign up with
             </h3>
-            <GoogleOAuthButton text="Continue with Google" />
+
+            {/* OAuth Buttons - Clean & Organized */}
+            <div className="space-y-3">
+              <GoogleOAuthButton text="Continue with Google" />
+              <BankIDButton />
+            </div>
 
             {/* Divider */}
             <div className="relative my-6">
